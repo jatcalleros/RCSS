@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Teacher Dashboard</title>
+    <style>
+      /* Styling for buttons */
+      .button-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .button {
+        padding: 10px;
+        background-color: #008CBA;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .button:hover {
+        background-color: #005f7f;
+      }
+      
+      /* Styling for search bar */
+      .search-container {
+        margin-bottom: 20px;
+      }
+      input[type=text] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+      }
+      input[type=text]:focus {
+        outline: none;
+        border-color: #008CBA;
+        box-shadow: 0 0 8px 0 rgba(0, 140, 186, 0.2);
+      }
+      .search-results {
+        font-weight: bold;
+        color: #008CBA;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Teacher Dashboard</h1>
+    
+    <div class="button-container">
+      <button class="button" onclick="scrollToStudents()">Students</button>
+    </div>
+    
+    <div class="search-container">
+      <input type="text" id="search-bar" onkeyup="searchTable()" placeholder="Search by student...">
+      <div id="search-results"></div>
+    </div>
+    
+    <h2 id="students">Students</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Teacher</th>
+          <th>Grade</th>
+        </tr>
+      </thead>
+      <tbody id="students-table">
+        {% for student in students %}
+        {% if student.teacher_name == current_teacher %}
+        <tr>
+          <td>{{ student.first_name }} {{ student.last_name }}</td>
+          <td>{{ student.teacher_name }}</td>
+          <td>{{ student.grade }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    
+    <script>
+      var current_teacher = "{{ teacher_name }}";
+    
+      function scrollToStudents() {
+        document.getElementById("students").scrollIntoView();
+      }
+    
+      function searchTable() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("search-bar");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("students-table");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }
+        }
+        var resultsDiv = document.getElementById("search-results");
+       
+        if (filter === "") {
+          resultsDiv.innerHTML = "";
+        } else {
+          resultsDiv.innerHTML = "Showing results for: <span class='search-results'>" + filter + "</span>";
+        }
+      }
+    </script>
+    
+  </body>
+</html>
+
