@@ -121,9 +121,20 @@ def rfid_function():
     GPIO.setup(red_led_pin, GPIO.OUT)
 
     # Function to turn LEDs on or off
-    def set_leds(green, red, delay=0):
+    def set_leds(green, red):
         GPIO.output(green_led_pin, green)
         GPIO.output(red_led_pin, red)
+    
+    def blink_leds_no_match (times, delay):
+        for _ in range(times):
+            set_leds(True, True)
+            time.sleep(delay)
+            set_leds(False, False)
+            time.sleep(delay)
+    def blink_leds_success (times, delay):
+        for _ in range(times):
+            set_leds(True, False)
+            time.sleep(delay)
 
     reader = SimpleMFRC522()
 
@@ -172,6 +183,7 @@ def rfid_function():
                             connection.execute(sql_text(stmt), params)
                             connection.commit()  # Commit the transaction
                             print("Dropoff info inserted")
+                            blink_leds_success(1,0.5)
 
                         else:
                            # Check if there's a pickup entry for the student with today's date
@@ -180,12 +192,22 @@ def rfid_function():
 
                             # If there is no pickup entry or it has been more than 10 minutes since the last swipe, insert a pickup entry
                             pickup_time_index = list(result.keys()).index('pickup_time')
-                            if not pickup_entry or (current_time - pickup_entry[pickup_time_index]).total_seconds() >= 600:
+                            if not pickup_entry:
+                                print("No pickup entry found")
+                                last_swipe_time = current_time
+                            elif (current_time - pickup_entry[pickup_time_index]).total_seconds() >= 10:
+                                print("More than 10 minutes since the last swipe")
+                                last_swipe_time = current_time
+                            else:
+                                print("Time since last swipe:", (current_time - pickup_entry[pickup_time_index]).total_seconds())
+
+                            if not pickup_entry or (current_time - pickup_entry[pickup_time_index]).total_seconds() >= 10:
                                 stmt = "INSERT INTO student_pickup (student_name, pickup_time) VALUES (:student_name, :pickup_time)"
                                 params = {"student_name": student_name, "pickup_time": datetime.datetime.now()}
                                 connection.execute(sql_text(stmt), params)
                                 connection.commit()  
                                 print("Pickup info inserted")
+                                blink_leds_success(1,0.5)
                             else:
                                 print("Swipe blocked for ID", id_number)
                                 for i in range(3):
@@ -197,11 +219,7 @@ def rfid_function():
 
                     else:
                         print("No ID match found")
-                        for _ in range(3):  # Blink both LEDs 3 times rapidly
-                            set_leds(True, True,1)
-                            time.sleep(0.25)
-                            set_leds(False, False,1)
-                            time.sleep(0.25)
+                        blink_leds_no_match(3, 0.5)
 
     finally:
         set_leds(False, False)  # Turn both LEDs off before exiting
