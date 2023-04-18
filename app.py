@@ -134,14 +134,20 @@ def rfid_function():
             # (The rest of the reading loop code remains the same.)
             set_leds(False, True)  # Turn the red LED on and the green LED off while waiting for a tag
             id_number, text = reader.read()
+            time.sleep(0.5)
             set_leds(True, False)  # Turn the green LED on and the red LED off when a tag is read
 
             # Check if the RFID id_number matches any student id
             with app.app_context():
                 with db.engine.connect() as connection:
                     result = connection.execute(sql_text("SELECT student_id, first_name, last_name FROM students WHERE student_id = :id"), {'id': str(id_number)})
-                    student_id, first_name, last_name = result.fetchone()
-                    student_name = f"{first_name} {last_name}"
+                    record = result.fetchone()
+                    if record:
+                        student_id, first_name, last_name =record
+                        student_name = f"{first_name} {last_name}"
+                    else:
+                        print("No ID match found")
+                        student_id = None
 
                     if student_id:
                         current_time = datetime.datetime.now()
@@ -168,25 +174,34 @@ def rfid_function():
                             print("Dropoff info inserted")
 
                         else:
-                            # Check if there's a pickup entry for the student with today's date
+                           # Check if there's a pickup entry for the student with today's date
                             result = connection.execute(sql_text("SELECT * FROM student_pickup WHERE student_name = :student_name AND DATE(pickup_time) = :today"), {'student_name': student_name, 'today': today})
                             pickup_entry = result.fetchone()
 
                             # If there is no pickup entry or it has been more than 10 minutes since the last swipe, insert a pickup entry
-                            if not pickup_entry or (current_time - pickup_entry['pickup_time']).total_seconds() >= 600:
+                            pickup_time_index = list(result.keys()).index('pickup_time')
+                            if not pickup_entry or (current_time - pickup_entry[pickup_time_index]).total_seconds() >= 600:
                                 stmt = "INSERT INTO student_pickup (student_name, pickup_time) VALUES (:student_name, :pickup_time)"
                                 params = {"student_name": student_name, "pickup_time": datetime.datetime.now()}
                                 connection.execute(sql_text(stmt), params)
-                                connection.commit()  # Commit the transaction
+                                connection.commit()  
                                 print("Pickup info inserted")
                             else:
                                 print("Swipe blocked for ID", id_number)
+                                for i in range(3):
+                                    set_leds(False, True)
+                                    time.sleep(.25)
+                                    set_leds(False, False)
+                                    time.sleep(.25)
+
 
                     else:
                         print("No ID match found")
                         for _ in range(3):  # Blink both LEDs 3 times rapidly
                             set_leds(True, True,1)
+                            time.sleep(0.25)
                             set_leds(False, False,1)
+                            time.sleep(0.25)
 
     finally:
         set_leds(False, False)  # Turn both LEDs off before exiting
