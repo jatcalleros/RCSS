@@ -29,10 +29,11 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+
 @login_manager.user_loader
 def load_user(email):
     print("Loading user with email:", email)
-    
+
     admin = Admin.query.filter_by(email=email).first()
     if admin:
         return admin
@@ -73,14 +74,16 @@ def login():
 
     return render_template('login.html')
 
+
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
-    dropoffs =student_dropoff.query.all()
+    dropoffs = student_dropoff.query.all()
     pickups = Pickup.query.all()
     students = Student.query.all()
     teachers = Teacher.query.all()
     return render_template('admin_dashboard.html', dropoffs=dropoffs, pickups=pickups, students=students, teachers=teachers)
+
 
 @app.route('/teacher_dashboard')
 @login_required
@@ -88,27 +91,22 @@ def teacher_dashboard():
     if not isinstance(current_user, Teacher):
         flash("Error: Access denied")
         return redirect(url_for('login'))
-        
+
     teacher = current_user
     students = Student.query.filter_by(teacher_id=teacher.teacher_id).all()
-    students = Student.query.filter_by(teacher_name=teacher.first_name + ' ' + teacher.last_name).all()
     student_ids = [student.student_id for student in students]
-    dropoffs = student_dropoff.query.filter(student_dropoff.student_id_fk.in_(student_ids)).all()
+    dropoffs = student_dropoff.query.filter(
+        student_dropoff.student_id_fk.in_(student_ids)).all()
     pickups = Pickup.query.filter(Pickup.student_name.in_(student_ids)).all()
     return render_template('teacher_dashboard.html', students=students, dropoffs=dropoffs, pickups=pickups)
 
 
-
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
+    flash("You have successfully logged out.")
     return redirect(url_for('login'))
-
-import threading
-import RPi.GPIO as GPIO
-from mfrc522 import SimpleMFRC522
-import time
 
 
 def rfid_function():
@@ -125,14 +123,15 @@ def rfid_function():
     def set_leds(green, red):
         GPIO.output(green_led_pin, green)
         GPIO.output(red_led_pin, red)
-    
-    def blink_leds_no_match (times, delay):
+
+    def blink_leds_no_match(times, delay):
         for _ in range(times):
             set_leds(True, True)
             time.sleep(delay)
             set_leds(False, False)
             time.sleep(delay)
-    def blink_leds_success (times, delay):
+
+    def blink_leds_success(times, delay):
         for _ in range(times):
             set_leds(True, False)
             time.sleep(delay)
@@ -144,18 +143,21 @@ def rfid_function():
     try:
         while True:
             # (The rest of the reading loop code remains the same.)
-            set_leds(False, True)  # Turn the red LED on and the green LED off while waiting for a tag
+            # Turn the red LED on and the green LED off while waiting for a tag
+            set_leds(False, True)
             id_number, text = reader.read()
             time.sleep(0.5)
-            set_leds(True, False)  # Turn the green LED on and the red LED off when a tag is read
+            # Turn the green LED on and the red LED off when a tag is read
+            set_leds(True, False)
 
             # Check if the RFID id_number matches any student id
             with app.app_context():
                 with db.engine.connect() as connection:
-                    result = connection.execute(sql_text("SELECT student_id, first_name, last_name FROM students WHERE student_id = :id"), {'id': str(id_number)})
+                    result = connection.execute(sql_text(
+                        "SELECT student_id, first_name, last_name FROM students WHERE student_id = :id"), {'id': str(id_number)})
                     record = result.fetchone()
                     if record:
-                        student_id, first_name, last_name =record
+                        student_id, first_name, last_name = record
                         student_name = f"{first_name} {last_name}"
                     else:
                         print("No ID match found")
@@ -174,25 +176,29 @@ def rfid_function():
 
                         # Check if there's a dropoff entry for the student with today's date
                         today = datetime.date.today()
-                        result = connection.execute(sql_text("SELECT * FROM student_dropoff WHERE student_id_fk = :id AND DATE(dropoff_time) = :today"), {'id': student_id, 'today': today})
+                        result = connection.execute(sql_text(
+                            "SELECT * FROM student_dropoff WHERE student_id_fk = :id AND DATE(dropoff_time) = :today"), {'id': student_id, 'today': today})
                         dropoff_entry = result.fetchone()
 
                         if not dropoff_entry:
                             # Insert the matched student id into the dropoff table
                             stmt = "INSERT INTO student_dropoff (student_id_fk, student_name, dropoff_time) VALUES (:id, :student_name, :dropoff_time)"
-                            params = {"id": student_id, "student_name": student_name, "dropoff_time": datetime.datetime.now()}
+                            params = {"id": student_id, "student_name": student_name,
+                                      "dropoff_time": datetime.datetime.now()}
                             connection.execute(sql_text(stmt), params)
                             connection.commit()  # Commit the transaction
                             print("Dropoff info inserted")
-                            blink_leds_success(1,0.5)
+                            blink_leds_success(1, 0.5)
 
                         else:
                            # Check if there's a pickup entry for the student with today's date
-                            result = connection.execute(sql_text("SELECT * FROM student_pickup WHERE student_name = :student_name AND DATE(pickup_time) = :today"), {'student_name': student_name, 'today': today})
+                            result = connection.execute(sql_text(
+                                "SELECT * FROM student_pickup WHERE student_name = :student_name AND DATE(pickup_time) = :today"), {'student_name': student_name, 'today': today})
                             pickup_entry = result.fetchone()
 
                             # If there is no pickup entry or it has been more than 10 minutes since the last swipe, insert a pickup entry
-                            pickup_time_index = list(result.keys()).index('pickup_time')
+                            pickup_time_index = list(
+                                result.keys()).index('pickup_time')
                             if not pickup_entry:
                                 print("No pickup entry found")
                                 last_swipe_time = current_time
@@ -200,15 +206,17 @@ def rfid_function():
                                 print("More than 10 minutes since the last swipe")
                                 last_swipe_time = current_time
                             else:
-                                print("Time since last swipe:", (current_time - pickup_entry[pickup_time_index]).total_seconds())
+                                print("Time since last swipe:", (current_time -
+                                      pickup_entry[pickup_time_index]).total_seconds())
 
                             if not pickup_entry or (current_time - pickup_entry[pickup_time_index]).total_seconds() >= 10:
                                 stmt = "INSERT INTO student_pickup (student_name, pickup_time) VALUES (:student_name, :pickup_time)"
-                                params = {"student_name": student_name, "pickup_time": datetime.datetime.now()}
+                                params = {"student_name": student_name,
+                                          "pickup_time": datetime.datetime.now()}
                                 connection.execute(sql_text(stmt), params)
-                                connection.commit()  
+                                connection.commit()
                                 print("Pickup info inserted")
-                                blink_leds_success(1,0.5)
+                                blink_leds_success(1, 0.5)
                             else:
                                 print("Swipe blocked for ID", id_number)
                                 for i in range(3):
@@ -216,7 +224,6 @@ def rfid_function():
                                     time.sleep(.25)
                                     set_leds(False, False)
                                     time.sleep(.25)
-
 
                     else:
                         print("No ID match found")
@@ -226,10 +233,10 @@ def rfid_function():
         set_leds(False, False)  # Turn both LEDs off before exiting
         GPIO.cleanup()
 
+
 # Call the rfid_function in a separate thread when the application starts
 rfid_thread = threading.Thread(target=rfid_function)
 rfid_thread.start()
-
 
 
 if __name__ == '__main__':
