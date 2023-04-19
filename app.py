@@ -90,6 +90,7 @@ def teacher_dashboard():
         return redirect(url_for('login'))
         
     teacher = current_user
+    students = Student.query.filter_by(teacher_id=teacher.teacher_id).all()
     students = Student.query.filter_by(teacher_name=teacher.first_name + ' ' + teacher.last_name).all()
     student_ids = [student.student_id for student in students]
     dropoffs = student_dropoff.query.filter(student_dropoff.student_id_fk.in_(student_ids)).all()

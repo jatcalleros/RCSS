@@ -25,6 +25,9 @@ class Teacher(db.Model, UserMixin):
     last_name = db.Column(db.String(255))
     password = db.Column(db.String(255))
     __tablename__ = 'teacher'
+
+    students = db.relationship('Student', backref='teacher', lazy=True)
+
     
     def is_active(self):
         return True
@@ -36,6 +39,7 @@ class Student(db.Model):
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
     classroom_number = db.Column(db.Integer)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.teacher_id')) 
     teacher_name = db.Column(db.String(255))
     guardian_1 = db.Column(db.String(255))
     primary_phone = db.Column(db.BigInteger)

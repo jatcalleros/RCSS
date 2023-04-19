@@ -49,6 +49,9 @@
     
     <div class="button-container">
       <button class="button" onclick="scrollToStudents()">Students</button>
+      <form action="{{ url_for('logout') }}" method="POST">
+        <input type="submit" class="button" value="Logout">
+      </form>
     </div>
     
     <div class="search-container">
@@ -61,26 +64,20 @@
       <thead>
         <tr>
           <th>Name</th>
-          <th>Teacher</th>
-          <th>Grade</th>
+          <th>Classroom Number</th>
         </tr>
       </thead>
       <tbody id="students-table">
         {% for student in students %}
-        {% if student.teacher_name == current_teacher %}
         <tr>
           <td>{{ student.first_name }} {{ student.last_name }}</td>
-          <td>{{ student.teacher_name }}</td>
-          <td>{{ student.grade }}</td>
+          <td>{{ student.classroom_number }}</td>
         </tr>
-        {% endif %}
         {% endfor %}
       </tbody>
     </table>
     
     <script>
-      var current_teacher = "{{ teacher_name }}";
-    
       function scrollToStudents() {
         document.getElementById("students").scrollIntoView();
       }
@@ -114,4 +111,3 @@
     
   </body>
 </html>
-
