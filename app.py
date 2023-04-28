@@ -9,13 +9,16 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Admin, Teacher, Student, student_dropoff, Pickup
+import socket
+
+
+def send_message(ip_address, port, message):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((ip_address, port))
+        s.sendall(message.encode('utf-8'))
 
 
 # Add necessary imports from RFID code
-import RPi.GPIO as GPIO
-from mfrc522 import SimpleMFRC522
-import time
-import threading
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'trm51'
@@ -154,14 +157,15 @@ def rfid_function():
             with app.app_context():
                 with db.engine.connect() as connection:
                     result = connection.execute(sql_text(
-                        "SELECT student_id, first_name, last_name FROM students WHERE student_id = :id"), {'id': str(id_number)})
+                        "SELECT student_id, first_name, last_name, teacher_id FROM students WHERE student_id = :id"), {'id': str(id_number)})
                     record = result.fetchone()
                     if record:
-                        student_id, first_name, last_name = record
+                        student_id, first_name, last_name, teacher_id = record
                         student_name = f"{first_name} {last_name}"
                     else:
                         print("No ID match found")
                         student_id = None
+                        teacher_id = None
 
                     if student_id:
                         current_time = datetime.datetime.now()
@@ -217,6 +221,15 @@ def rfid_function():
                                 connection.commit()
                                 print("Pickup info inserted")
                                 blink_leds_success(1, 0.5)
+
+                            # Send message to appropriate teacher based on teacher_id
+                            if teacher_id == 1:
+                                message = f" {student_name}."
+                                send_message('192.168.1.3', 12345, message)
+                            elif teacher_id == 2:
+                                message = f"{student_name}."
+                                send_message('192.168.1.4', 12345, message)
+
                             else:
                                 print("Swipe blocked for ID", id_number)
                                 for i in range(3):

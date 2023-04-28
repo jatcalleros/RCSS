@@ -106,16 +106,6 @@
           <th>Teacher</th>
           <th>Grade</th>
         </tr>
-        <tbody id="students-table">
-          {% for student in students %}
-          <tr>
-            <td>{{ student.first_name }} {{ student.last_name }}</td>
-            <td>{{ student.teacher_name }}</td>
-            <td>{{ student.grade }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        
         <script>
           function scrollToDropoffs() {
             document.getElementById("dropoffs").scrollIntoView();
